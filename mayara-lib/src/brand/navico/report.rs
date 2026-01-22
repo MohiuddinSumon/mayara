@@ -482,7 +482,18 @@ impl NavicoReportReceiver {
                     }
                 },
 
-                r = self.info_socket.as_ref().unwrap().recv_buf_from(&mut self.info_buf),
+                r = async {
+                    match self.info_socket.as_ref() {
+                        Some(socket) => socket.recv_buf_from(&mut self.info_buf).await,
+                        None => {
+                            // This future will never complete, but the guard prevents this branch from being selected
+                            // We use a very long sleep instead of Duration::MAX to avoid potential issues
+                            loop {
+                                sleep(Duration::from_secs(86400 * 365)).await;
+                            }
+                        }
+                    }
+                },
                     if self.info_socket.is_some() => {
                     match r {
                         Ok((_len, addr)) => {
@@ -497,7 +508,18 @@ impl NavicoReportReceiver {
                 },
 
 
-                r = self.speed_socket.as_ref().unwrap().recv_buf_from(&mut self.speed_buf),
+                r = async {
+                    match self.speed_socket.as_ref() {
+                        Some(socket) => socket.recv_buf_from(&mut self.speed_buf).await,
+                        None => {
+                            // This future will never complete, but the guard prevents this branch from being selected
+                            // We use a very long sleep instead of Duration::MAX to avoid potential issues
+                            loop {
+                                sleep(Duration::from_secs(86400 * 365)).await;
+                            }
+                        }
+                    }
+                },
                     if self.speed_socket.is_some() => {
                     match r {
                         Ok((_len, addr)) => {
@@ -655,6 +677,21 @@ impl NavicoReportReceiver {
     // If range detection is in progress, go to the next range
     async fn process_range(&mut self, range: i32) -> Result<(), RadarError> {
         let range = range / 10;
+        
+        // In replay mode, if we have no ranges but receive a range from a report packet,
+        // add it directly to make the radar active
+        if self.replay && self.info.ranges.len() == 0 && range > 0 {
+            use crate::radar::range::Range;
+            let detected_range = Range::new(range, 0);
+            self.info.ranges.push(detected_range.clone());
+            self.info
+                .controls
+                .set_valid_ranges(&ControlType::Range, &self.info.ranges)?;
+            log::info!("{}: Added range {} from report packet (replay mode)", self.key, detected_range);
+            self.radars.update(&self.info);
+            return Ok(());
+        }
+        
         if self.info.ranges.len() == 0 && self.info.range_detection.is_none() && !self.replay {
             if let Some(status) = self.info.controls.get_status() {
                 if status == Status::Transmit {
