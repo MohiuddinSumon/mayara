@@ -808,7 +808,7 @@ fn default_legend(session: Session, doppler: bool, pixel_values: u8) -> Legend {
         }
     }
 
-    log::info!("Created legend {:?}", legend);
+    // log::info!("Created legend {:?}", legend);
     legend
 }
 

@@ -45,3 +45,15 @@ See [TODO](TODO.md)
 We're on Discord, here is an invite: [Discord channel](https://discord.gg/kC6h6JVxxC)
 
 
+
+<!-- 
+
+./target/release/mayara-server --replay --brand navico -i lo -p 6502
+ 
+
+sudo tcpreplay -q -T select -l 0 -i lo halo_and_0183.pcap
+
+
+sudo tcpreplay -i lo halo_and_0183.pcap
+
+ -->
